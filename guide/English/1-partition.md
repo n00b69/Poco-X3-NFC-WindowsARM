@@ -1,132 +1,149 @@
-<img align="right" src="https://github.com/wormstest/src_vayu_windows/blob/main/2Poco X3 Pro Windows.png" width="350" alt="Windows 11 Running On A Poco X3 Pro">
+<img align="right" src="https://github.com/wormstest/src_vayu_windows/blob/main/2Poco X3 Pro Windows.png" width="350" alt="Windows 11 Running On A Poco X3 NFC">
 
-
-# Running Windows on the POCO X3 Nfc
-
-## Installation
+# Running Windows on the POCO X3 NFC
 
 ## Partitioning your device
 
-## Notes:
-> **Warning** if you delete any partitions via diskpart later on or now windows will send a ufs command that gets misinterpreted which erase all your ufs
-- All your data will be erased! Backup now if needed.
-- These commands have been tested.
-- Ignore `udevadm` warnings
-- Do not run the same command twice
-- DO NOT REBOOT YOUR PHONE if you think you made a mistake, ask for help in the [Telegram chat](https://t.me/windows_on_pocox3_nfc)
+### Prerequisites
+- A brain (most important of all)
 
-#### Boot TWRP recovery through the PC with the command
+- [ADB & Fastboot](https://developer.android.com/studio/releases/platform-tools)
+  
+- [TWRP](https://mega.nz/file/zY4GCDRT#PxUKhUHkucj1oRH_Iu-R6exDak66hPeI71xJWHCTQkY) or [OrangeFox](https://drive.google.com/file/d/1eHM9ST9ni-55bbT3z-TGSZQsgE3KYr9s/view)
+
+- [Parted](https://github.com/n00b69/woa-polaris/releases/download/Files/parted)
+
+### Notes
+> [!WARNING]  
+> Do not run the same command twice unless specified.
+> 
+> DO NOT REBOOT YOUR PHONE! If you think you made a mistake, ask for help in the [Telegram chat](https://t.me/windows_on_pocox3_nfc).
+> 
+> Do not run all commands at once, execute them in order!
+>
+> YOU CAN BREAK YOUR DEVICE WITH THE COMMANDS BELOW IF YOU DO THEM WRONG!!!
+
+### Booting the recovery
+> Open a CMD window inside the platform-tools folder, then (while your phone is in fastboot mode) run
 ```cmd
-fastboot boot <twrp.img>
+fastboot boot path\to\twrp.img
 ```
-> If you already have TWRP installed, just hold the power and vol+ buttons at startup
 
-#### Unmount all partitions
-Go to TWRP settings and unmount all partitions
+#### Backing up important files
+Use TWRP now to back up your Modem and EFS partition (as well as anything else if you have important data). Move this backup to a safe place (e.g your PC) as the next steps will wipe your data.
 
- ## Push necessary tools:
+> [!Warning]
+> All of your data will be erased. This is your last chance to back up.
+> 
+> **IF YOU PROCEED WITHOUT BACKING UP MODEM AND EFS, YOU ARE ON YOUR OWN IF YOU MESS UP**
+
+### Partitioning guide
+> Your Poco X3 NFC may have different storage sizes. This guide uses the values of the 128GB model as an example. When relevant, the guide will mention if other values can or should be used.
+
+#### Unmount data
+- Go to "Mount" in TWRP and unmount data, if it is mounted
+
+#### Preparing for partitioning
+> Download the parted file and move it in the platform-tools folder, then run
 ```cmd
-adb push parted /sbin
+adb push parted /cache/ && adb shell "chmod 755 /cache/parted" && adb shell /cache/parted /dev/block/sda
 ```
 
-## Start the ADB shell
+#### Printing the current partition table
+> Parted will print the list of partitions, userdata should be the last partition in the list.
 ```cmd
-adb shell
+print
 ```
 
-## Create Partitions
-
-### Give permissions
+#### Removing userdata
+> Replace **$** with the number of the **userdata** partition, which should be **16**
 ```cmd
-chmod +x /sbin/*
+rm $
 ```
 
-
-### Start parted
-```sh
-parted /dev/block/sda
+#### Recreating userdata
+> Replace **10.8GB** with the former start value of **userdata** which we just deleted (it is probably 10.8GB)
+>
+> Replace **90GB** with the end value you want **userdata** to have
+```cmd
+mkpart userdata ext4 10.8GB 90GB
 ```
 
-
-### Delete the `userdata` partition
-> You can make sure that 16 is the userdata partition number by running
->  `print all`
-```sh
-rm 16
+#### Creating ESP partition
+> Replace **90GB** with the end value of **userdata**
+>
+> Replace **90.5GB** with the value you used before, adding **0.5GB** to it
+```cmd
+mkpart esp fat32 90GB 90.5GB
 ```
 
-### Create partitions
-> If you get any warning message telling you to ignore or cancel, just type i and enter
-
-#### For 64Gb models:
-
-- Create the ESP partition (stores Windows bootloader data and EFI files)
- ```sh
-mkpart esp fat32 10.8GB 11GB
+#### Creating Windows partition
+> Replace **90.5GB** with the end value of **esp**
+>
+> Replace **123GB** with the end value of your disk, use `p free` to find it
+```cmd
+mkpart win ntfs 90.5GB 123GB
 ```
 
-- Create the main partition where Windows will be installed to
-```sh
-mkpart win ntfs 11GB 45GB 
+#### Making ESP bootable
+> Use `print` to see all partitions. Replace "$" with your ESP partition number, which should be 17
+```cmd
+set $ esp on
 ```
 
-- Create Android's data partition
-```sh
-mkpart userdata ext4 45GB 59.4GB
-```
-
-#### For 128Gb models:
-
-- Create the ESP partition (stores Windows bootloader data and EFI files)
-```sh
-mkpart esp fat32 10.8GB 11GB
-```
-
-- Create the main partition where Windows will be installed to
-```sh
-mkpart win ntfs 11GB 65GB
-```
-
-- Create Android's data partition
-```sh
-mkpart userdata ext4 65GB 123GB
-```
-
-
-### Make ESP partiton bootable so the EFI image can detect it
-```sh
-set 16 esp on
-```
-
-### Quit parted
-```sh
+#### Exit parted
+```cmd
 quit
 ```
 
-### Reboot to TWRP
+#### Formatting data
+- Format all data in TWRP, or Android will not boot.
+- ( Go to Wipe > Format data > type yes )
 
-### Start the shell again on your PC
-```cmd
-adb shell
-```
-
-### Format partitions
--  Format the ESP partiton as FAT32
-```sh
-mkfs.fat -F32 -s1 /dev/block/by-name/esp -n ESPSURYA
-```
-
--  Format the Windows partition as NTFS
-```sh
-mkfs.ntfs -f /dev/block/by-name/win -L WINSURYA
-```
-
-- Format data
-Go to Wipe menu and press Format Data, 
-then type `yes`.
-
-### Check if Android still starts
-just restart the phone, and see if Android still works
+#### Check if Android still starts
+- Just restart the phone, and see if Android still works
 
 
-## [Next step: Install Windows](https://github.com/SebastianZSXS/Poco-X3-NFC-WindowsARM/blob/main/guide/English/install.md)
+## [Next step: Installing Windows](/guide/2-install.md)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
