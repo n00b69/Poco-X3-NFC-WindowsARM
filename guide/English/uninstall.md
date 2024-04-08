@@ -5,27 +5,45 @@
 ## Restore stock partition table
 
 ### Why do we need it?
-
 If you want to uninstall Windows use this to avoid human error to avoid writing a guide dedicated only to uninstall.
 
 If you want to lock your bootloader again you need the stock partition table
 
-###Previous requirements
-
+### Prerequisites
 - [gpt_both0.bin](../../../../releases/label/Binaries)
 
-### Grades
-
+### Flashing the stock GPT
 > Replace ```<gpt_both0.bin>``` with the directory of gpt_both0.bin
-
-
-## GPT Restaurant
-
 ``` cmd
 fastboot flash partition: 0 <gpt_both0.bin>
 ```
 
-## Format user data to avoid bootloop and restore FS weight
+#### Format user data to avoid bootloop and restore FS weight
 ``` cmd
 fastboot -w
 ```
+
+### Reboot to Android
+```cmd
+fastboot reboot
+```
+
+## Finished!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
